@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "904291566612",
+    "project_id": "hadra-messenger",
+    "storage_bucket": "hadra-messenger.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:904291566612:android:c65f92e74507e792219301",
+        "android_client_info": {
+          "package_name": "com.example.hadra"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAcHV6W9DNTLbPB-TyVRfAcKFwNE2g_26E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
