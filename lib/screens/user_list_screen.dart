@@ -19,16 +19,38 @@ class UserListScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text("Hadra - Users"),
         actions: [
-          IconButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const EditProfileScreen(),
+          // Current User Profile Image
+          StreamBuilder<UserModel?>(
+            stream: _authService.currentUserStream,
+            builder: (context, snapshot) {
+              final user = snapshot.data;
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const EditProfileScreen(),
+                    ),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                  child: CircleAvatar(
+                    radius: 18,
+                    backgroundColor: Colors.grey[300],
+                    backgroundImage:
+                        (user?.profilePic != null &&
+                            user!.profilePic!.isNotEmpty)
+                        ? NetworkImage(user.profilePic!)
+                        : null,
+                    child:
+                        (user?.profilePic == null || user!.profilePic!.isEmpty)
+                        ? const Icon(Icons.person, size: 20)
+                        : null,
+                  ),
                 ),
               );
             },
-            icon: const Icon(Icons.person),
           ),
           IconButton(
             onPressed: () => _authService.signOut(),
@@ -56,9 +78,18 @@ class UserListScreen extends StatelessWidget {
             itemBuilder: (context, index) {
               final user = users[index];
               return ListTile(
-                leading: CircleAvatar(child: Text(user.name?[0] ?? '?')),
+                leading: CircleAvatar(
+                  backgroundColor: Colors.grey[200],
+                  backgroundImage:
+                      (user.profilePic != null && user.profilePic!.isNotEmpty)
+                      ? NetworkImage(user.profilePic!)
+                      : null,
+                  child: (user.profilePic == null || user.profilePic!.isEmpty)
+                      ? Text(user.name?[0].toUpperCase() ?? '?')
+                      : null,
+                ),
                 title: Text(user.name ?? 'Unknown'),
-                subtitle: Text(user.phoneNumber),
+                subtitle: Text(user.email),
                 onTap: () {
                   Navigator.push(
                     context,

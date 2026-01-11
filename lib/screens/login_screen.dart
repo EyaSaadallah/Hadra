@@ -11,31 +11,27 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final AuthService _authService = AuthService();
   bool _isLoading = false;
   bool _obscurePassword = true;
 
   void _login() async {
-    String phone = _phoneController.text.trim();
+    String email = _emailController.text.trim();
     String password = _passwordController.text.trim();
 
-    if (phone.isEmpty || password.isEmpty) {
+    if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Please fill all fields")));
       return;
     }
 
-    if (!phone.startsWith('+')) {
-      phone = '+216$phone'; // Default for Tunisia
-    }
-
     setState(() => _isLoading = true);
 
     try {
-      await _authService.signIn(phoneNumber: phone, password: password);
+      await _authService.signIn(email: email, password: password);
 
       // Success - AuthWrapper will automatically navigate
       if (mounted) {
@@ -46,13 +42,13 @@ class _LoginScreenState extends State<LoginScreen> {
       String errorMessage = "Login failed";
 
       if (e.code == 'user-not-found') {
-        errorMessage = "No account found with this phone number.";
+        errorMessage = "No account found with this email.";
       } else if (e.code == 'wrong-password') {
         errorMessage = "Incorrect password.";
       } else if (e.code == 'invalid-email') {
-        errorMessage = "Invalid phone number format.";
+        errorMessage = "Invalid email format.";
       } else if (e.code == 'invalid-credential') {
-        errorMessage = "Invalid phone number or password.";
+        errorMessage = "Invalid email or password.";
       } else if (e.message != null) {
         errorMessage = e.message!;
       }
@@ -75,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Phone Login")),
+      appBar: AppBar(title: const Text("Email Login")),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
@@ -87,14 +83,14 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 40),
             TextField(
-              controller: _phoneController,
+              controller: _emailController,
               decoration: const InputDecoration(
-                labelText: "Phone Number",
+                labelText: "Email",
                 border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.phone),
-                hintText: "+216 22 622 661",
+                prefixIcon: Icon(Icons.email),
+                hintText: "example@email.com",
               ),
-              keyboardType: TextInputType.phone,
+              keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 20),
             TextField(

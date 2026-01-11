@@ -10,13 +10,6 @@ class AuthService {
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // Convert phone number to email format for Firebase Auth
-  String _phoneToEmail(String phone) {
-    // Remove + and special characters, then add domain
-    String cleanPhone = phone.replaceAll(RegExp(r'[^\d]'), '');
-    return '$cleanPhone@hadra.app';
-  }
-
   // Hash password for storage
   String _hashPassword(String password) {
     var bytes = utf8.encode(password);
@@ -24,15 +17,14 @@ class AuthService {
     return digest.toString();
   }
 
-  // Sign Up with Phone and Password
+  // Sign Up with Email and Password
   Future<UserCredential?> signUp({
-    required String phoneNumber,
+    required String email,
     required String password,
     required String name,
+    String? phoneNumber,
   }) async {
     try {
-      String email = _phoneToEmail(phoneNumber);
-
       // Create user with email/password
       UserCredential userCredential = await _auth
           .createUserWithEmailAndPassword(email: email, password: password);
@@ -41,6 +33,7 @@ class AuthService {
       if (userCredential.user != null) {
         UserModel newUser = UserModel(
           uid: userCredential.user!.uid,
+          email: email,
           phoneNumber: phoneNumber,
           name: name,
           password: _hashPassword(password),
@@ -61,14 +54,12 @@ class AuthService {
     }
   }
 
-  // Sign In with Phone and Password
+  // Sign In with Email and Password
   Future<UserCredential?> signIn({
-    required String phoneNumber,
+    required String email,
     required String password,
   }) async {
     try {
-      String email = _phoneToEmail(phoneNumber);
-
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
@@ -109,7 +100,9 @@ class AuthService {
 
   Future<void> updateProfile({
     String? name,
+    String? username,
     String? profilePic,
+    String? bio,
     String? address,
   }) async {
     User? user = _auth.currentUser;
@@ -118,7 +111,9 @@ class AuthService {
     try {
       Map<String, dynamic> data = {};
       if (name != null) data['name'] = name;
+      if (username != null) data['username'] = username;
       if (profilePic != null) data['profilePic'] = profilePic;
+      if (bio != null) data['bio'] = bio;
       if (address != null) data['address'] = address;
 
       if (data.isNotEmpty) {
@@ -131,4 +126,18 @@ class AuthService {
   }
 
   User? get currentUser => _auth.currentUser;
+
+  Stream<UserModel?> get currentUserStream {
+    User? user = _auth.currentUser;
+    if (user == null) return Stream.value(null);
+    return _firestore
+        .collection('users')
+        .doc(user.uid)
+        .snapshots()
+        .map(
+          (doc) => doc.exists
+              ? UserModel.fromMap(doc.data() as Map<String, dynamic>)
+              : null,
+        );
+  }
 }

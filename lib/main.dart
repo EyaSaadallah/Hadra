@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/login_screen.dart';
-import 'screens/user_list_screen.dart';
+import 'screens/main_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  await dotenv.load(fileName: ".env");
   runApp(const MyApp());
 }
 
@@ -41,7 +43,7 @@ class AuthWrapper extends StatelessWidget {
           if (user == null) {
             return const LoginScreen();
           } else {
-            return UserListScreen();
+            return const MainScreen();
           }
         }
         // Otherwise, show loading screen
