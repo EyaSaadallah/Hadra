@@ -5,6 +5,8 @@ import 'add_post_screen.dart';
 import 'user_list_screen.dart';
 import 'notifications_screen.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
+import '../models/notification_model.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -16,6 +18,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   final AuthService _authService = AuthService();
+  final NotificationService _notificationService = NotificationService();
 
   late final List<Widget> _screens;
 
@@ -49,21 +52,55 @@ class _MainScreenState extends State<MainScreen> {
         unselectedItemColor: Colors.grey,
         showSelectedLabels: false,
         showUnselectedLabels: false,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: 'Home'),
-          BottomNavigationBarItem(
+        items: [
+          const BottomNavigationBarItem(
+            icon: Icon(Icons.home_filled),
+            label: 'Home',
+          ),
+          const BottomNavigationBarItem(
             icon: Icon(Icons.send_rounded),
             label: 'Messages',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.add_box_outlined),
             label: 'Add',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.favorite_border),
+            icon: StreamBuilder<List<NotificationModel>>(
+              stream: _notificationService.getNotifications(
+                _authService.currentUser?.uid ?? '',
+              ),
+              builder: (context, snapshot) {
+                bool hasUnread = false;
+                if (snapshot.hasData) {
+                  hasUnread = snapshot.data!.any((n) => !n.isRead);
+                }
+                return Stack(
+                  children: [
+                    const Icon(Icons.favorite_border),
+                    if (hasUnread)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(1),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 10,
+                            minHeight: 10,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
             label: 'Activity',
           ),
-          BottomNavigationBarItem(
+          const BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
             label: 'Profile',
           ),

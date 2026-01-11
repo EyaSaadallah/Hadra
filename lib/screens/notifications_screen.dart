@@ -48,6 +48,13 @@ class NotificationsScreen extends StatelessWidget {
 
           final notifications = snapshot.data!;
 
+          // Mark unread notifications as read
+          for (var n in notifications) {
+            if (!n.isRead) {
+              notificationService.markAsRead(n.id);
+            }
+          }
+
           return ListView.builder(
             itemCount: notifications.length,
             itemBuilder: (context, index) {
