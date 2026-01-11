@@ -6,6 +6,7 @@ import 'package:hadra/models/user_model.dart';
 import 'package:hadra/services/auth_service.dart';
 import 'package:hadra/services/post_service.dart';
 import 'package:hadra/screens/comments_screen.dart';
+import 'package:hadra/screens/profile_screen.dart';
 
 class PostWidget extends StatefulWidget {
   final PostModel post;
@@ -43,19 +44,45 @@ class _PostWidgetState extends State<PostWidget> {
           children: [
             // Post Header
             ListTile(
-              leading: CircleAvatar(
-                backgroundColor: Colors.grey[200],
-                backgroundImage:
-                    (owner?.profilePic != null && owner!.profilePic!.isNotEmpty)
-                    ? NetworkImage(owner.profilePic!)
-                    : null,
-                child: (owner?.profilePic == null || owner!.profilePic!.isEmpty)
-                    ? const Icon(Icons.person, color: Colors.white)
-                    : null,
+              leading: GestureDetector(
+                onTap: () {
+                  if (owner != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProfileScreen(uid: owner!.uid),
+                      ),
+                    );
+                  }
+                },
+                child: CircleAvatar(
+                  backgroundColor: Colors.grey[200],
+                  backgroundImage:
+                      (owner?.profilePic != null &&
+                          owner!.profilePic!.isNotEmpty)
+                      ? NetworkImage(owner.profilePic!)
+                      : null,
+                  child:
+                      (owner?.profilePic == null || owner!.profilePic!.isEmpty)
+                      ? const Icon(Icons.person, color: Colors.white)
+                      : null,
+                ),
               ),
-              title: Text(
-                owner?.username ?? owner?.name ?? "User",
-                style: const TextStyle(fontWeight: FontWeight.bold),
+              title: GestureDetector(
+                onTap: () {
+                  if (owner != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProfileScreen(uid: owner!.uid),
+                      ),
+                    );
+                  }
+                },
+                child: Text(
+                  owner?.username ?? owner?.name ?? "User",
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
               trailing: const Icon(Icons.more_vert),
             ),

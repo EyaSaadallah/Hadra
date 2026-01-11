@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/chat_service.dart';
 import '../models/user_model.dart';
-import 'chat_screen.dart';
 import 'edit_profile_screen.dart';
+import 'chat_screen.dart';
 
 class UserListScreen extends StatelessWidget {
   UserListScreen({super.key});
@@ -17,7 +17,7 @@ class UserListScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Hadra - Users"),
+        title: const Text("Messages"),
         actions: [
           // Current User Profile Image
           StreamBuilder<UserModel?>(
@@ -59,7 +59,7 @@ class UserListScreen extends StatelessWidget {
         ],
       ),
       body: StreamBuilder<List<UserModel>>(
-        stream: _chatService.getUsers(currentUser?.uid ?? ''),
+        stream: _chatService.getChatUsers(currentUser?.uid ?? ''),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -68,7 +68,7 @@ class UserListScreen extends StatelessWidget {
             return Center(child: Text("Error: ${snapshot.error}"));
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text("No users found"));
+            return const Center(child: Text("No messages yet"));
           }
 
           final users = snapshot.data!;
@@ -88,8 +88,8 @@ class UserListScreen extends StatelessWidget {
                       ? Text(user.name?[0].toUpperCase() ?? '?')
                       : null,
                 ),
-                title: Text(user.name ?? 'Unknown'),
-                subtitle: Text(user.email),
+                title: Text(user.username ?? user.name ?? 'Unknown'),
+                subtitle: Text(user.name ?? ''),
                 onTap: () {
                   Navigator.push(
                     context,

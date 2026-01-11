@@ -3,8 +3,11 @@ import 'package:hadra/models/user_model.dart';
 import 'package:hadra/models/post_model.dart';
 import 'package:hadra/services/auth_service.dart';
 import 'package:hadra/services/post_service.dart';
+import 'package:hadra/services/user_service.dart';
 import 'package:hadra/screens/edit_profile_screen.dart';
 import 'package:hadra/screens/post_detail_screen.dart';
+import 'package:hadra/screens/follow_list_screen.dart';
+import 'package:hadra/screens/chat_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   final String uid;
@@ -12,17 +15,17 @@ class ProfileScreen extends StatelessWidget {
 
   final AuthService _authService = AuthService();
   final PostService _postService = PostService();
+  final UserService _userService = UserService();
 
   @override
   Widget build(BuildContext context) {
-    bool isMe = _authService.currentUser?.uid == uid;
+    String currentUserId = _authService.currentUser?.uid ?? '';
+    bool isMe = currentUserId == uid;
 
     return Scaffold(
       appBar: AppBar(
         title: StreamBuilder<UserModel?>(
-          stream: isMe
-              ? _authService.currentUserStream
-              : null, // Fallback for other users later
+          stream: _userService.getUserData(uid),
           builder: (context, snapshot) {
             return Text(
               snapshot.data?.username ?? snapshot.data?.name ?? "Profile",
@@ -39,12 +42,14 @@ class ProfileScreen extends StatelessWidget {
         ],
       ),
       body: StreamBuilder<UserModel?>(
-        stream: isMe
-            ? _authService.currentUserStream
-            : null, // Update for other users later
+        stream: _userService.getUserData(uid),
         builder: (context, snapshot) {
-          if (!snapshot.hasData)
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
+          }
+          if (!snapshot.hasData || snapshot.data == null) {
+            return const Center(child: Text("User not found"));
+          }
           final user = snapshot.data!;
 
           return SingleChildScrollView(
@@ -58,6 +63,7 @@ class ProfileScreen extends StatelessWidget {
                     children: [
                       CircleAvatar(
                         radius: 40,
+                        backgroundColor: Colors.grey[200],
                         backgroundImage:
                             (user.profilePic != null &&
                                 user.profilePic!.isNotEmpty)
@@ -73,9 +79,43 @@ class ProfileScreen extends StatelessWidget {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            _buildStatColumn("Posts", user.postsCount),
-                            _buildStatColumn("Followers", user.followersCount),
-                            _buildStatColumn("Following", user.followingCount),
+                            _buildStatColumn("Posts", user.postsCount, null),
+                            _buildStatColumn(
+                              "Followers",
+                              user.followersCount,
+                              () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => FollowListScreen(
+                                      uid: user.uid,
+                                      title: "Followers",
+                                      userStream: _userService.getFollowers(
+                                        user.uid,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            _buildStatColumn(
+                              "Following",
+                              user.followingCount,
+                              () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => FollowListScreen(
+                                      uid: user.uid,
+                                      title: "Following",
+                                      userStream: _userService.getFollowing(
+                                        user.uid,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
                           ],
                         ),
                       ),
@@ -104,33 +144,101 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Edit Profile Button
-                if (isMe)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const EditProfileScreen(),
+
+                // Action Buttons (Edit Profile or Follow/Unfollow)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: isMe
+                      ? SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const EditProfileScreen(),
+                                ),
+                              );
+                            },
+                            style: OutlinedButton.styleFrom(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                            child: const Text(
+                              "Edit Profile",
+                              style: TextStyle(color: Colors.black),
+                            ),
                           ),
+                        )
+                      : StreamBuilder<bool>(
+                          stream: _userService.isFollowing(currentUserId, uid),
+                          builder: (context, snapshot) {
+                            bool following = snapshot.data ?? false;
+                            return Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      if (following) {
+                                        _userService.unfollowUser(
+                                          currentUserId,
+                                          uid,
+                                        );
+                                      } else {
+                                        _userService.followUser(
+                                          currentUserId,
+                                          uid,
+                                        );
+                                      }
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: following
+                                          ? Colors.grey[200]
+                                          : Colors.blue,
+                                      foregroundColor: following
+                                          ? Colors.black
+                                          : Colors.white,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      following ? "Unfollow" : "Follow",
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              ChatScreen(receiverUser: user),
+                                        ),
+                                      );
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      "Message",
+                                      style: TextStyle(color: Colors.black),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         ),
-                        child: const Text(
-                          "Edit Profile",
-                          style: TextStyle(color: Colors.black),
-                        ),
-                      ),
-                    ),
-                  ),
+                ),
+
                 const SizedBox(height: 20),
                 // Posts Grid
                 const Divider(),
@@ -155,14 +263,6 @@ class ProfileScreen extends StatelessWidget {
                                 style: const TextStyle(color: Colors.red),
                               ),
                               const SizedBox(height: 10),
-                              const Text(
-                                "Tip: Check your debug console for a link to create an index in Firestore.",
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
                             ],
                           ),
                         ),
@@ -241,15 +341,18 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatColumn(String label, int count) {
-    return Column(
-      children: [
-        Text(
-          count.toString(),
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        Text(label, style: const TextStyle(fontSize: 14, color: Colors.grey)),
-      ],
+  Widget _buildStatColumn(String label, int count, VoidCallback? onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Text(
+            count.toString(),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          Text(label, style: const TextStyle(fontSize: 14, color: Colors.grey)),
+        ],
+      ),
     );
   }
 }

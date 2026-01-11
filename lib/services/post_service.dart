@@ -1,10 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:hadra/models/post_model.dart';
 import 'package:hadra/models/comment_model.dart';
+import 'package:hadra/services/notification_service.dart';
 import 'package:uuid/uuid.dart';
 
 class PostService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final NotificationService _notificationService = NotificationService();
 
   // Create Post
   Future<void> createPost(PostModel post) async {
@@ -43,6 +45,19 @@ class PostService {
       await _firestore.collection('posts').doc(postId).update({
         'commentCount': FieldValue.increment(1),
       });
+
+      // Send notification to post owner
+      final postDoc = await _firestore.collection('posts').doc(postId).get();
+      if (postDoc.exists) {
+        final postData = postDoc.data() as Map<String, dynamic>;
+        await _notificationService.addNotification(
+          toUid: postData['ownerUid'],
+          fromUid: userId,
+          type: 'comment',
+          postId: postId,
+          postImage: postData['imageUrl'],
+        );
+      }
     } catch (e) {
       print("Error adding comment: $e");
     }
@@ -113,13 +128,17 @@ class PostService {
     return _firestore
         .collection('posts')
         .where('ownerUid', isEqualTo: uid)
-        .orderBy('timestamp', descending: true)
         .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
+        .map((snapshot) {
+          final posts = snapshot.docs
               .map((doc) => PostModel.fromMap(doc.data()))
-              .toList(),
-        );
+              .toList();
+
+          // Sort in memory by timestamp descending
+          posts.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+          return posts;
+        });
   }
 
   // Like Post
@@ -133,6 +152,19 @@ class PostService {
         await _firestore.collection('posts').doc(postId).update({
           'likes': FieldValue.arrayUnion([userId]),
         });
+
+        // Send notification to post owner (only if liking)
+        final postDoc = await _firestore.collection('posts').doc(postId).get();
+        if (postDoc.exists) {
+          final postData = postDoc.data() as Map<String, dynamic>;
+          await _notificationService.addNotification(
+            toUid: postData['ownerUid'],
+            fromUid: userId,
+            type: 'like',
+            postId: postId,
+            postImage: postData['imageUrl'],
+          );
+        }
       }
     } catch (e) {
       print("Error toggling like: $e");

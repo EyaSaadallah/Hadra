@@ -3,6 +3,7 @@ import 'feed_screen.dart';
 import 'profile_screen.dart';
 import 'add_post_screen.dart';
 import 'user_list_screen.dart';
+import 'notifications_screen.dart';
 import '../services/auth_service.dart';
 
 class MainScreen extends StatefulWidget {
@@ -25,7 +26,7 @@ class _MainScreenState extends State<MainScreen> {
       const FeedScreen(),
       UserListScreen(), // Messenger-like user list as search/chat tab
       const AddPostScreen(),
-      const Center(child: Text("Notifications")), // Placeholder
+      const NotificationsScreen(),
       ProfileScreen(uid: _authService.currentUser?.uid ?? ''),
     ];
   }

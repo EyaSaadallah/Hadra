@@ -37,6 +37,13 @@ class ChatService {
       timestamp: timestamp,
     );
 
+    // Initialise or update the chat room document with participants and last message info
+    await _firestore.collection('chat_rooms').doc(chatRoomId).set({
+      'participants': [senderId, receiverId],
+      'lastMessage': encryptedMessage,
+      'lastMessageTimestamp': timestamp,
+    }, SetOptions(merge: true));
+
     await _firestore
         .collection('chat_rooms')
         .doc(chatRoomId)
@@ -54,6 +61,46 @@ class ChatService {
         .collection('messages')
         .orderBy('timestamp', descending: false)
         .snapshots();
+  }
+
+  // Get active chat users
+  Stream<List<UserModel>> getChatUsers(String currentUserId) {
+    return _firestore
+        .collection('chat_rooms')
+        .where('participants', arrayContains: currentUserId)
+        .snapshots()
+        .asyncMap((snapshot) async {
+          List<Map<String, dynamic>> userWithTimestamp = [];
+          for (var doc in snapshot.docs) {
+            List<dynamic> participants = doc['participants'];
+            String otherUserId = participants.firstWhere(
+              (id) => id != currentUserId,
+            );
+            Timestamp? timestamp = doc['lastMessageTimestamp'] as Timestamp?;
+
+            var userDoc = await _firestore
+                .collection('users')
+                .doc(otherUserId)
+                .get();
+            if (userDoc.exists) {
+              userWithTimestamp.add({
+                'user': UserModel.fromMap(
+                  userDoc.data() as Map<String, dynamic>,
+                ),
+                'timestamp': timestamp ?? Timestamp(0, 0),
+              });
+            }
+          }
+
+          // Sort in memory by timestamp descending
+          userWithTimestamp.sort(
+            (a, b) => (b['timestamp'] as Timestamp).compareTo(
+              a['timestamp'] as Timestamp,
+            ),
+          );
+
+          return userWithTimestamp.map((e) => e['user'] as UserModel).toList();
+        });
   }
 
   // Get All Users (except current)
