@@ -20,6 +20,7 @@ class ChatService {
     String message, {
     String type = 'text',
     String? mediaUrl,
+    String? postId,
   }) async {
     final Timestamp timestamp = Timestamp.now();
 
@@ -39,6 +40,7 @@ class ChatService {
       timestamp: timestamp,
       type: type,
       mediaUrl: mediaUrl,
+      postId: postId,
     );
 
     // Initialise or update the chat room document with participants and last message info

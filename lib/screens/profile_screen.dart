@@ -8,6 +8,7 @@ import 'package:hadra/screens/edit_profile_screen.dart';
 import 'package:hadra/screens/post_detail_screen.dart';
 import 'package:hadra/screens/follow_list_screen.dart';
 import 'package:hadra/screens/chat_screen.dart';
+import 'package:hadra/widgets/account_switch_helper.dart';
 
 class ProfileScreen extends StatelessWidget {
   final String uid;
@@ -80,39 +81,49 @@ class ProfileScreen extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
                             _buildStatColumn("Posts", user.postsCount, null),
-                            _buildStatColumn(
-                              "Followers",
-                              user.followersCount,
-                              () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => FollowListScreen(
-                                      uid: user.uid,
-                                      title: "Followers",
-                                      userStream: _userService.getFollowers(
-                                        user.uid,
+                            StreamBuilder<int>(
+                              stream: _userService.getFollowerCount(uid),
+                              builder: (context, countSnapshot) {
+                                return _buildStatColumn(
+                                  "Followers",
+                                  countSnapshot.data ?? user.followersCount,
+                                  () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => FollowListScreen(
+                                          uid: user.uid,
+                                          title: "Followers",
+                                          userStream: _userService.getFollowers(
+                                            user.uid,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
+                                    );
+                                  },
                                 );
                               },
                             ),
-                            _buildStatColumn(
-                              "Following",
-                              user.followingCount,
-                              () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => FollowListScreen(
-                                      uid: user.uid,
-                                      title: "Following",
-                                      userStream: _userService.getFollowing(
-                                        user.uid,
+                            StreamBuilder<int>(
+                              stream: _userService.getFollowingCount(uid),
+                              builder: (context, countSnapshot) {
+                                return _buildStatColumn(
+                                  "Following",
+                                  countSnapshot.data ?? user.followingCount,
+                                  () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => FollowListScreen(
+                                          uid: user.uid,
+                                          title: "Following",
+                                          userStream: _userService.getFollowing(
+                                            user.uid,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
+                                    );
+                                  },
                                 );
                               },
                             ),
@@ -149,91 +160,144 @@ class ProfileScreen extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: isMe
-                      ? SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const EditProfileScreen(),
+                      ? Column(
+                          children: [
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const EditProfileScreen(),
+                                    ),
+                                  );
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
                                 ),
-                              );
-                            },
-                            style: OutlinedButton.styleFrom(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                child: const Text(
+                                  "Edit Profile",
+                                  style: TextStyle(color: Colors.black),
+                                ),
                               ),
                             ),
-                            child: const Text(
-                              "Edit Profile",
-                              style: TextStyle(color: Colors.black),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  AccountSwitchHelper.showAccountSwitcher(
+                                    context,
+                                  );
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.swap_horiz,
+                                  color: Colors.black,
+                                ),
+                                label: const Text(
+                                  "Switch Account",
+                                  style: TextStyle(color: Colors.black),
+                                ),
+                              ),
                             ),
-                          ),
+                          ],
                         )
                       : StreamBuilder<bool>(
                           stream: _userService.isFollowing(currentUserId, uid),
-                          builder: (context, snapshot) {
-                            bool following = snapshot.data ?? false;
-                            return Row(
-                              children: [
-                                Expanded(
-                                  child: ElevatedButton(
-                                    onPressed: () {
-                                      if (following) {
-                                        _userService.unfollowUser(
-                                          currentUserId,
-                                          uid,
-                                        );
-                                      } else {
-                                        _userService.followUser(
-                                          currentUserId,
-                                          uid,
-                                        );
-                                      }
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: following
-                                          ? Colors.grey[200]
-                                          : Colors.blue,
-                                      foregroundColor: following
-                                          ? Colors.black
-                                          : Colors.white,
-                                      elevation: 0,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      following ? "Unfollow" : "Follow",
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: OutlinedButton(
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              ChatScreen(receiverUser: user),
+                          builder: (context, followSnapshot) {
+                            bool following = followSnapshot.data ?? false;
+                            return StreamBuilder<bool>(
+                              stream: _userService.isFollowing(
+                                uid,
+                                currentUserId,
+                              ),
+                              builder: (context, followedBySnapshot) {
+                                bool isFollowedByThem =
+                                    followedBySnapshot.data ?? false;
+
+                                String buttonText = "Follow";
+                                if (following) {
+                                  buttonText = "Unfollow";
+                                } else if (isFollowedByThem) {
+                                  buttonText = "Follow Back";
+                                }
+
+                                return Row(
+                                  children: [
+                                    Expanded(
+                                      child: ElevatedButton(
+                                        onPressed: () {
+                                          if (following) {
+                                            _userService.unfollowUser(
+                                              currentUserId,
+                                              uid,
+                                            );
+                                          } else {
+                                            _userService.followUser(
+                                              currentUserId,
+                                              uid,
+                                            );
+                                          }
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: following
+                                              ? Colors.grey[200]
+                                              : Colors.blue,
+                                          foregroundColor: following
+                                              ? Colors.black
+                                              : Colors.white,
+                                          elevation: 0,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
                                         ),
-                                      );
-                                    },
-                                    style: OutlinedButton.styleFrom(
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
+                                        child: Text(buttonText),
                                       ),
                                     ),
-                                    child: const Text(
-                                      "Message",
-                                      style: TextStyle(color: Colors.black),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                                    if (following) ...[
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: OutlinedButton(
+                                          onPressed: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    ChatScreen(
+                                                      receiverUser: user,
+                                                    ),
+                                              ),
+                                            );
+                                          },
+                                          style: OutlinedButton.styleFrom(
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            "Message",
+                                            style: TextStyle(
+                                              color: Colors.black,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                );
+                              },
                             );
                           },
                         ),
@@ -342,12 +406,14 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildStatColumn(String label, int count, VoidCallback? onTap) {
+    // Ensure we don't display negative numbers in case of legacy data corruption
+    final displayCount = count < 0 ? 0 : count;
     return GestureDetector(
       onTap: onTap,
       child: Column(
         children: [
           Text(
-            count.toString(),
+            displayCount.toString(),
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           Text(label, style: const TextStyle(fontSize: 14, color: Colors.grey)),

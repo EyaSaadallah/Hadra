@@ -5,7 +5,9 @@ import 'package:hadra/models/post_model.dart';
 import 'package:hadra/models/user_model.dart';
 import 'package:hadra/services/auth_service.dart';
 import 'package:hadra/services/post_service.dart';
-import 'package:hadra/screens/comments_screen.dart';
+import 'package:hadra/widgets/comments_helper.dart';
+import 'package:hadra/widgets/likes_helper.dart';
+import 'package:hadra/widgets/share_helper.dart';
 import 'package:hadra/screens/profile_screen.dart';
 
 class PostWidget extends StatefulWidget {
@@ -153,18 +155,14 @@ class _PostWidgetState extends State<PostWidget> {
                 IconButton(
                   icon: const Icon(Icons.chat_bubble_outline),
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            CommentsScreen(postId: widget.post.id),
-                      ),
-                    );
+                    CommentsHelper.showComments(context, widget.post.id);
                   },
                 ),
                 IconButton(
                   icon: const Icon(Icons.send_outlined),
-                  onPressed: () {},
+                  onPressed: () {
+                    ShareHelper.showShareSheet(context, widget.post);
+                  },
                 ),
                 const Spacer(),
                 IconButton(
@@ -174,11 +172,18 @@ class _PostWidgetState extends State<PostWidget> {
               ],
             ),
             // Likes count
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Text(
-                "${widget.post.likes.length} likes",
-                style: const TextStyle(fontWeight: FontWeight.bold),
+            GestureDetector(
+              onTap: () {
+                if (widget.post.likes.isNotEmpty) {
+                  LikesHelper.showLikes(context, widget.post.likes);
+                }
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Text(
+                  "${widget.post.likes.length} likes",
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
             ),
             // Comments count link
@@ -190,13 +195,7 @@ class _PostWidgetState extends State<PostWidget> {
                 ),
                 child: GestureDetector(
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            CommentsScreen(postId: widget.post.id),
-                      ),
-                    );
+                    CommentsHelper.showComments(context, widget.post.id);
                   },
                   child: Text(
                     "View all ${widget.post.commentCount} comments",

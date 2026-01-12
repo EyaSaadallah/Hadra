@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import '../models/user_model.dart';
+import 'account_storage_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -65,6 +66,18 @@ class AuthService {
         password: password,
       );
 
+      // Save account credentials for account switching
+      if (userCredential.user != null) {
+        final accountStorage = AccountStorageService();
+        final userData = await getCurrentUserData();
+        await accountStorage.saveAccount(
+          email: email,
+          password: password,
+          name: userData?.name,
+          profilePic: userData?.profilePic,
+        );
+      }
+
       return userCredential;
     } on FirebaseAuthException catch (e) {
       print("Error signing in: ${e.message}");
@@ -118,6 +131,18 @@ class AuthService {
 
       if (data.isNotEmpty) {
         await _firestore.collection('users').doc(user.uid).update(data);
+
+        // Update saved account info if name or profilePic changed
+        if (name != null || profilePic != null) {
+          final accountStorage = AccountStorageService();
+          if (user.email != null) {
+            await accountStorage.updateAccountInfo(
+              email: user.email!,
+              name: name,
+              profilePic: profilePic,
+            );
+          }
+        }
       }
     } catch (e) {
       print("Error updating profile: $e");

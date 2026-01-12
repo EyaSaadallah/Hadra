@@ -5,18 +5,59 @@ import '../models/user_model.dart';
 
 import 'chat_screen.dart';
 
-class UserListScreen extends StatelessWidget {
-  UserListScreen({super.key});
+class UserListScreen extends StatefulWidget {
+  const UserListScreen({super.key});
 
+  @override
+  State<UserListScreen> createState() => _UserListScreenState();
+}
+
+class _UserListScreenState extends State<UserListScreen> {
   final AuthService _authService = AuthService();
   final ChatService _chatService = ChatService();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final currentUser = _authService.currentUser;
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Messages")),
+      appBar: AppBar(
+        title: const Text("Messages"),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value.toLowerCase();
+                  });
+                },
+                decoration: const InputDecoration(
+                  hintText: "Search conversations...",
+                  prefixIcon: Icon(Icons.search),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
       body: StreamBuilder<List<UserModel>>(
         stream: _chatService.getChatUsers(currentUser?.uid ?? ''),
         builder: (context, snapshot) {
@@ -30,7 +71,20 @@ class UserListScreen extends StatelessWidget {
             return const Center(child: Text("No messages yet"));
           }
 
-          final users = snapshot.data!;
+          var users = snapshot.data!;
+
+          if (_searchQuery.isNotEmpty) {
+            users = users.where((user) {
+              final name = user.name?.toLowerCase() ?? "";
+              final username = user.username?.toLowerCase() ?? "";
+              return name.contains(_searchQuery) ||
+                  username.contains(_searchQuery);
+            }).toList();
+          }
+
+          if (users.isEmpty && _searchQuery.isNotEmpty) {
+            return const Center(child: Text("No conversations found"));
+          }
 
           return ListView.builder(
             itemCount: users.length,

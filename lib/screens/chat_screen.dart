@@ -1,6 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'profile_screen.dart';
+import 'post_detail_screen.dart';
+import '../services/post_service.dart';
+import '../services/user_service.dart';
+import '../models/post_model.dart';
 import 'package:flutter/services.dart';
 import '../models/user_model.dart';
 import '../models/message_model.dart';
@@ -29,6 +33,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ChatService _chatService = ChatService();
   final AuthService _authService = AuthService();
+  final UserService _userService = UserService();
   final ImageKitService _imageKitService = ImageKitService();
   final ImagePicker _picker = ImagePicker();
   final AudioRecorder _audioRecorder = AudioRecorder();
@@ -547,6 +552,84 @@ class _ChatScreenState extends State<ChatScreen> {
       );
     } else if (msg.type == 'audio') {
       return AudioPlayerWidget(audioUrl: msg.mediaUrl!);
+    } else if (msg.postId != null) {
+      return GestureDetector(
+        onTap: () async {
+          final post = await PostService().getPostById(msg.postId!);
+          if (post != null && mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PostDetailScreen(post: post),
+              ),
+            );
+          }
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            FutureBuilder<PostModel?>(
+              future: PostService().getPostById(msg.postId!),
+              builder: (context, postSnapshot) {
+                if (postSnapshot.hasData && postSnapshot.data != null) {
+                  return FutureBuilder<UserModel?>(
+                    future: _userService.getUserDataFuture(
+                      postSnapshot.data!.ownerUid,
+                    ),
+                    builder: (context, userSnapshot) {
+                      final ownerName =
+                          userSnapshot.data?.username ??
+                          userSnapshot.data?.name ??
+                          'User';
+                      return Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.person_outline,
+                            size: 14,
+                            color: Colors.grey[700],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            "@$ownerName",
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[800],
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+            const SizedBox(height: 4),
+            if (msg.mediaUrl != null)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.network(
+                  msg.mediaUrl!,
+                  width: 200,
+                  height: 200,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            const SizedBox(height: 5),
+            Text(
+              decryptedText,
+              style: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+            ),
+            const SizedBox(height: 2),
+            const Text(
+              "View Post",
+              style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      );
     } else {
       return Text(decryptedText, style: const TextStyle(fontSize: 16));
     }

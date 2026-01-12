@@ -10,6 +10,7 @@ class MessageModel {
   final bool isSeen;
   final String type; // 'text', 'image', 'video', 'document', 'audio'
   final String? mediaUrl;
+  final String? postId;
 
   MessageModel({
     this.id,
@@ -21,6 +22,7 @@ class MessageModel {
     this.isSeen = false,
     this.type = 'text',
     this.mediaUrl,
+    this.postId,
   });
 
   Map<String, dynamic> toMap() {
@@ -33,6 +35,7 @@ class MessageModel {
       'isSeen': isSeen,
       'type': type,
       'mediaUrl': mediaUrl,
+      'postId': postId,
     };
   }
 
@@ -47,6 +50,7 @@ class MessageModel {
       isSeen: map['isSeen'] ?? false,
       type: map['type'] ?? 'text',
       mediaUrl: map['mediaUrl'],
+      postId: map['postId'],
     );
   }
 }

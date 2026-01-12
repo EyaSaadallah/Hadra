@@ -89,6 +89,37 @@ class PostService {
             .update({
               'likes': FieldValue.arrayUnion([userId]),
             });
+
+        // Send notification to comment owner
+        final commentDoc = await _firestore
+            .collection('posts')
+            .doc(postId)
+            .collection('comments')
+            .doc(commentId)
+            .get();
+
+        if (commentDoc.exists) {
+          final commentData = commentDoc.data() as Map<String, dynamic>;
+          final commentOwnerUid = commentData['uid'];
+
+          // Get post image for the notification
+          final postDoc = await _firestore
+              .collection('posts')
+              .doc(postId)
+              .get();
+          String? postImage;
+          if (postDoc.exists) {
+            postImage = (postDoc.data() as Map<String, dynamic>)['imageUrl'];
+          }
+
+          await _notificationService.addNotification(
+            toUid: commentOwnerUid,
+            fromUid: userId,
+            type: 'like_comment',
+            postId: postId,
+            postImage: postImage,
+          );
+        }
       }
     } catch (e) {
       print("Error toggling comment like: $e");
@@ -169,5 +200,18 @@ class PostService {
     } catch (e) {
       print("Error toggling like: $e");
     }
+  }
+
+  // Get single post by ID
+  Future<PostModel?> getPostById(String postId) async {
+    try {
+      final postDoc = await _firestore.collection('posts').doc(postId).get();
+      if (postDoc.exists) {
+        return PostModel.fromMap(postDoc.data() as Map<String, dynamic>);
+      }
+    } catch (e) {
+      print("Error getting post: $e");
+    }
+    return null;
   }
 }

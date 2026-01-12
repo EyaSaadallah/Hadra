@@ -43,7 +43,8 @@ class AuthWrapper extends StatelessWidget {
           if (user == null) {
             return const LoginScreen();
           } else {
-            return const MainScreen();
+            // Use user ID as key to force rebuild when user changes
+            return MainScreen(key: ValueKey(user.uid));
           }
         }
         // Otherwise, show loading screen

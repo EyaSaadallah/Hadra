@@ -9,33 +9,39 @@ class UserService {
   // Follow a user
   Future<void> followUser(String currentUserId, String targetUserId) async {
     try {
-      // 1. Add targetUserId to current user's following subcollection
-      await _firestore
+      final followingRef = _firestore
           .collection('users')
           .doc(currentUserId)
           .collection('following')
-          .doc(targetUserId)
-          .set({'timestamp': FieldValue.serverTimestamp()});
-
-      // 2. Add currentUserId to target user's followers subcollection
-      await _firestore
+          .doc(targetUserId);
+      final followerRef = _firestore
           .collection('users')
           .doc(targetUserId)
           .collection('followers')
-          .doc(currentUserId)
-          .set({'timestamp': FieldValue.serverTimestamp()});
+          .doc(currentUserId);
+      final currentUserRef = _firestore.collection('users').doc(currentUserId);
+      final targetUserRef = _firestore.collection('users').doc(targetUserId);
 
-      // 3. Increment current user's followingCount
-      await _firestore.collection('users').doc(currentUserId).update({
-        'followingCount': FieldValue.increment(1),
+      await _firestore.runTransaction((transaction) async {
+        final followingDoc = await transaction.get(followingRef);
+
+        if (!followingDoc.exists) {
+          transaction.set(followingRef, {
+            'timestamp': FieldValue.serverTimestamp(),
+          });
+          transaction.set(followerRef, {
+            'timestamp': FieldValue.serverTimestamp(),
+          });
+          transaction.update(currentUserRef, {
+            'followingCount': FieldValue.increment(1),
+          });
+          transaction.update(targetUserRef, {
+            'followersCount': FieldValue.increment(1),
+          });
+        }
       });
 
-      // 4. Increment target user's followersCount
-      await _firestore.collection('users').doc(targetUserId).update({
-        'followersCount': FieldValue.increment(1),
-      });
-
-      // 5. Send notification
+      // Send notification (outside transaction is fine)
       await _notificationService.addNotification(
         toUid: targetUserId,
         fromUid: currentUserId,
@@ -50,30 +56,32 @@ class UserService {
   // Unfollow a user
   Future<void> unfollowUser(String currentUserId, String targetUserId) async {
     try {
-      // 1. Remove targetUserId from current user's following subcollection
-      await _firestore
+      final followingRef = _firestore
           .collection('users')
           .doc(currentUserId)
           .collection('following')
-          .doc(targetUserId)
-          .delete();
-
-      // 2. Remove currentUserId from target user's followers subcollection
-      await _firestore
+          .doc(targetUserId);
+      final followerRef = _firestore
           .collection('users')
           .doc(targetUserId)
           .collection('followers')
-          .doc(currentUserId)
-          .delete();
+          .doc(currentUserId);
+      final currentUserRef = _firestore.collection('users').doc(currentUserId);
+      final targetUserRef = _firestore.collection('users').doc(targetUserId);
 
-      // 3. Decrement current user's followingCount
-      await _firestore.collection('users').doc(currentUserId).update({
-        'followingCount': FieldValue.increment(-1),
-      });
+      await _firestore.runTransaction((transaction) async {
+        final followingDoc = await transaction.get(followingRef);
 
-      // 4. Decrement target user's followersCount
-      await _firestore.collection('users').doc(targetUserId).update({
-        'followersCount': FieldValue.increment(-1),
+        if (followingDoc.exists) {
+          transaction.delete(followingRef);
+          transaction.delete(followerRef);
+          transaction.update(currentUserRef, {
+            'followingCount': FieldValue.increment(-1),
+          });
+          transaction.update(targetUserRef, {
+            'followersCount': FieldValue.increment(-1),
+          });
+        }
       });
     } catch (e) {
       print("Error unfollowing user: $e");
@@ -90,6 +98,14 @@ class UserService {
         .doc(targetUserId)
         .snapshots()
         .map((snapshot) => snapshot.exists);
+  }
+
+  // Get user data by UID (Future version)
+  Future<UserModel?> getUserDataFuture(String uid) async {
+    final doc = await _firestore.collection('users').doc(uid).get();
+    return doc.exists
+        ? UserModel.fromMap(doc.data() as Map<String, dynamic>)
+        : null;
   }
 
   // Get user data by UID
@@ -151,5 +167,41 @@ class UserService {
           }
           return following;
         });
+  }
+
+  // Get multiple users by their IDs
+  Stream<List<UserModel>> getUsersFromUids(List<String> uids) {
+    if (uids.isEmpty) return Stream.value([]);
+
+    // Firestore whereIn has a limit of 30, for now we assume likes are fewer or we handle it simply
+    return _firestore
+        .collection('users')
+        .where(FieldPath.documentId, whereIn: uids)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs
+              .map((doc) => UserModel.fromMap(doc.data()))
+              .toList();
+        });
+  }
+
+  // Get actual followers count (real-time)
+  Stream<int> getFollowerCount(String uid) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('followers')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
+  // Get actual following count (real-time)
+  Stream<int> getFollowingCount(String uid) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('following')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
   }
 }
