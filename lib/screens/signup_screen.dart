@@ -78,7 +78,12 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Create Account")),
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text("Create Account"),
+        backgroundColor: Colors.white,
+        elevation: 0,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: SingleChildScrollView(
@@ -86,8 +91,13 @@ class _SignupScreenState extends State<SignupScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const SizedBox(height: 40),
-              const Icon(Icons.person_add, size: 80, color: Colors.blue),
-              const SizedBox(height: 20),
+              Image.asset('assets/logo/app_icon.png', height: 180),
+              const SizedBox(height: 10),
+              const Text(
+                "Hadra Messenger",
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 30),
               TextField(
                 controller: _nameController,
                 decoration: const InputDecoration(

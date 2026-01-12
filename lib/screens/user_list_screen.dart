@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/chat_service.dart';
 import '../models/user_model.dart';
-import 'edit_profile_screen.dart';
+
 import 'chat_screen.dart';
 
 class UserListScreen extends StatelessWidget {
@@ -16,48 +16,7 @@ class UserListScreen extends StatelessWidget {
     final currentUser = _authService.currentUser;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Messages"),
-        actions: [
-          // Current User Profile Image
-          StreamBuilder<UserModel?>(
-            stream: _authService.currentUserStream,
-            builder: (context, snapshot) {
-              final user = snapshot.data;
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const EditProfileScreen(),
-                    ),
-                  );
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                  child: CircleAvatar(
-                    radius: 18,
-                    backgroundColor: Colors.grey[300],
-                    backgroundImage:
-                        (user?.profilePic != null &&
-                            user!.profilePic!.isNotEmpty)
-                        ? NetworkImage(user.profilePic!)
-                        : null,
-                    child:
-                        (user?.profilePic == null || user!.profilePic!.isEmpty)
-                        ? const Icon(Icons.person, size: 20)
-                        : null,
-                  ),
-                ),
-              );
-            },
-          ),
-          IconButton(
-            onPressed: () => _authService.signOut(),
-            icon: const Icon(Icons.logout),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text("Messages")),
       body: StreamBuilder<List<UserModel>>(
         stream: _chatService.getChatUsers(currentUser?.uid ?? ''),
         builder: (context, snapshot) {
@@ -90,6 +49,32 @@ class UserListScreen extends StatelessWidget {
                 ),
                 title: Text(user.username ?? user.name ?? 'Unknown'),
                 subtitle: Text(user.name ?? ''),
+                trailing: StreamBuilder<int>(
+                  stream: _chatService.getUnreadMessageCount(
+                    currentUser?.uid ?? '',
+                    user.uid,
+                  ),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData || snapshot.data == 0) {
+                      return const SizedBox.shrink();
+                    }
+                    return Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(
+                        color: Colors.blue,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        '${snapshot.data}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    );
+                  },
+                ),
                 onTap: () {
                   Navigator.push(
                     context,

@@ -13,34 +13,38 @@ class ChatService {
     return ids.join("_");
   }
 
-  // Send Message (with encryption)
+  // Send Message (with encryption support for text)
   Future<void> sendMessage(
     String receiverId,
     String senderId,
-    String message,
-  ) async {
+    String message, {
+    String type = 'text',
+    String? mediaUrl,
+  }) async {
     final Timestamp timestamp = Timestamp.now();
 
     // Get chat room ID
     String chatRoomId = getChatRoomId(senderId, receiverId);
 
-    // Encrypt the message before sending
-    String encryptedMessage = EncryptionService.encryptMessage(
-      message,
-      chatRoomId,
-    );
+    // Encrypt the message if it's text
+    String storedMessage = message;
+    if (type == 'text' && message.isNotEmpty) {
+      storedMessage = EncryptionService.encryptMessage(message, chatRoomId);
+    }
 
     MessageModel newMessage = MessageModel(
       senderId: senderId,
       receiverId: receiverId,
-      message: encryptedMessage, // Store encrypted message
+      message: storedMessage,
       timestamp: timestamp,
+      type: type,
+      mediaUrl: mediaUrl,
     );
 
     // Initialise or update the chat room document with participants and last message info
     await _firestore.collection('chat_rooms').doc(chatRoomId).set({
       'participants': [senderId, receiverId],
-      'lastMessage': encryptedMessage,
+      'lastMessage': type == 'text' ? storedMessage : 'Media: $type',
       'lastMessageTimestamp': timestamp,
     }, SetOptions(merge: true));
 
@@ -59,8 +63,75 @@ class ChatService {
         .collection('chat_rooms')
         .doc(chatRoomId)
         .collection('messages')
-        .orderBy('timestamp', descending: false)
+        .orderBy('timestamp', descending: true)
         .snapshots();
+  }
+
+  // Toggle Like Message
+  Future<void> toggleLikeMessage(
+    String userId,
+    String otherUserId,
+    String messageId,
+    bool currentIsLiked,
+  ) async {
+    String chatRoomId = getChatRoomId(userId, otherUserId);
+    await _firestore
+        .collection('chat_rooms')
+        .doc(chatRoomId)
+        .collection('messages')
+        .doc(messageId)
+        .update({'isLiked': !currentIsLiked});
+  }
+
+  // Mark Messages as Seen
+  Future<void> markMessagesAsSeen(String userId, String otherUserId) async {
+    String chatRoomId = getChatRoomId(userId, otherUserId);
+    var snapshot = await _firestore
+        .collection('chat_rooms')
+        .doc(chatRoomId)
+        .collection('messages')
+        .where('receiverId', isEqualTo: userId)
+        .where('isSeen', isEqualTo: false)
+        .get();
+
+    for (var doc in snapshot.docs) {
+      await doc.reference.update({'isSeen': true});
+    }
+  }
+
+  // Get unread message count
+  Stream<int> getUnreadMessageCount(String userId, String otherUserId) {
+    String chatRoomId = getChatRoomId(userId, otherUserId);
+    return _firestore
+        .collection('chat_rooms')
+        .doc(chatRoomId)
+        .collection('messages')
+        .where('receiverId', isEqualTo: userId)
+        .where('isSeen', isEqualTo: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
+  // Get total unread count across all rooms
+  Stream<int> getTotalUnreadCount(String currentUserId) {
+    return _firestore
+        .collection('chat_rooms')
+        .where('participants', arrayContains: currentUserId)
+        .snapshots()
+        .asyncMap((snapshot) async {
+          int total = 0;
+          for (var doc in snapshot.docs) {
+            var messagesSnapshot = await _firestore
+                .collection('chat_rooms')
+                .doc(doc.id)
+                .collection('messages')
+                .where('receiverId', isEqualTo: currentUserId)
+                .where('isSeen', isEqualTo: false)
+                .get();
+            total += messagesSnapshot.docs.length;
+          }
+          return total;
+        });
   }
 
   // Get active chat users

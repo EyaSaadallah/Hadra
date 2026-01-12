@@ -75,4 +75,19 @@ class NotificationService {
       'isRead': true,
     });
   }
+
+  // Mark all notifications as read for a user
+  Future<void> markAllAsRead(String uid) async {
+    var snapshot = await _firestore
+        .collection('notifications')
+        .where('toUid', isEqualTo: uid)
+        .where('isRead', isEqualTo: false)
+        .get();
+
+    WriteBatch batch = _firestore.batch();
+    for (var doc in snapshot.docs) {
+      batch.update(doc.reference, {'isRead': true});
+    }
+    await batch.commit();
+  }
 }

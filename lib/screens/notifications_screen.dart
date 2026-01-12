@@ -6,7 +6,8 @@ import '../services/notification_service.dart';
 import 'profile_screen.dart';
 
 class NotificationsScreen extends StatelessWidget {
-  const NotificationsScreen({super.key});
+  final bool isActive;
+  const NotificationsScreen({super.key, this.isActive = false});
 
   @override
   Widget build(BuildContext context) {
@@ -48,11 +49,10 @@ class NotificationsScreen extends StatelessWidget {
 
           final notifications = snapshot.data!;
 
-          // Mark unread notifications as read
-          for (var n in notifications) {
-            if (!n.isRead) {
-              notificationService.markAsRead(n.id);
-            }
+          if (isActive) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              notificationService.markAllAsRead(currentUserId);
+            });
           }
 
           return ListView.builder(
